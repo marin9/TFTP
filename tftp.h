@@ -1,6 +1,5 @@
 #ifndef TFTP_H
 #define TFTP_H
-
 #include "net.h"
 
 //Request codes
@@ -24,7 +23,8 @@
 #define NO_SUCH_USER			7
 #define DIRECTORY_NOT_FOUND		8		
 
-#define BUFFLEN		(2+2+512)
+#define DATALEN		512
+#define BUFFLEN		(2+2+DATALEN)
 
 int GetRequestData(char *buff, int len, int *opcode, char *filename);
 void RemoveFile(int sock, char *buff, char *dir, char *name, int wr, struct sockaddr_in *addr, socklen_t alen);

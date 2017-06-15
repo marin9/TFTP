@@ -7,8 +7,6 @@
 #include "net.h"
 #include "tftp.h"
 
-#define PATHLEN		256
-
 
 void GetOpt(int argc, char **argv, char *dir, int *write, unsigned short *port);
 void printServerInfo(int port, char *dir);
@@ -17,12 +15,11 @@ void AddSigAction();
 void sigchld_handler();
 
 
-
 int main(int argc, char **argv){
 	int sock;
 	int write;
 	unsigned short port;
-	char directory[PATHLEN+1];
+	char directory[NAMELEN];
 			
 	GetOpt(argc, argv, directory, &write, &port);
 	AddSigAction();
@@ -35,10 +32,11 @@ int main(int argc, char **argv){
 		socklen_t alen=sizeof(caddr);
 		
 		int len=RecvFrom(sock, buffer, &caddr, &alen);
+		if(len==-1) continue;
 	
 		int s=fork();
 		if(s==-1){
-			printf("\x1B[31mERROR:\x1B[0m Client process create fail. %s\n", streeror(errno));
+			printf("\x1B[31mERROR:\x1B[0m Client process create fail. %s\n", strerror(errno));
 			exit(1);
 			
 		}else if(s>0){
@@ -92,7 +90,7 @@ void AddSigAction(){
 int RecvFrom(int sock, char* buff, struct sockaddr_in* addr, socklen_t *addrlen){
 	int n=recvfrom(sock, buff, BUFFLEN, 0, (struct sockaddr*)addr, addrlen);
 	
-	if(n==-1){
+	if(n==-1 && (errno!=EAGAIN && errno!=EWOULDBLOCK && errno!=EINTR)){
 		printf("\x1B[31mERROR:\x1B[0m Reqest receive fail: %s.\n", strerror(errno));
 		exit(5);
 	}
@@ -110,7 +108,7 @@ void GetOpt(int argc, char **argv, char *dir, int *write, unsigned short *port){
 	while((c=getopt(argc, argv, "d:p:w"))!=-1){
     	switch(c){
      		case 'd':			
-				strncpy(dir, optarg, PATHLEN);
+				strncpy(dir, optarg, NAMELEN-1);
 				++sum;
         		break;
       		case 'p':
@@ -136,7 +134,7 @@ void GetOpt(int argc, char **argv, char *dir, int *write, unsigned short *port){
 		exit(1);
 	}
 
-	if(dir[0]==0) getcwd(dir, PATHLEN);
+	if(dir[0]==0) getcwd(dir, NAMELEN-1);
 
 	printServerInfo(*port, dir);
 }

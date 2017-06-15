@@ -1,29 +1,32 @@
+CC=gcc
 FLAGS=-Wall -Wextra -c
+OBJ=net.o file.o tftp.o
 
 all: stftp ctftp
 
 
-stftp : stftp.o net.o file.o tftp.o
-	cc stftp.o net.o file.o tftp.o -o stftp
+stftp : stftp.o $(OBJ)
+	$(CC) stftp.o $(OBJ) -o stftp
 	
-ctftp : ctftp.o net.o file.o tftp.o
-	cc ctftp.o net.o file.o tftp.o -o ctftp
+ctftp : ctftp.o $(OBJ)
+	$(CC) ctftp.o $(OBJ) -o ctftp
 
 
 ctftp.o : ctftp.c
-	cc $(FLAGS) ctftp.c
+	$(CC) $(FLAGS) ctftp.c
 	
 stftp.o : stftp.c
-	cc $(FLAGS) stftp.c	
+	$(CC) $(FLAGS) stftp.c	
 	
 tftp.o : tftp.c
-	cc $(FLAGS) tftp.c
+	$(CC) $(FLAGS) tftp.c
 	
 net.o : net.c
-	cc $(FLAGS) net.c
+	$(CC) $(FLAGS) net.c
 	
 file.o : file.c
-	cc $(FLAGS) file.c
+	$(CC) $(FLAGS) file.c
+
 
 clean:
 	rm *.o

@@ -1,6 +1,5 @@
 #ifndef NET_H
 #define NET_H
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,12 +10,9 @@
 #include <netdb.h>
 #include <errno.h>
 
-
 void printLocalAddrs();
-char* getIPv4ByName(char *name);
-char* getNameByIP(char *ip_str);
-
 int SocketUDP(unsigned short port);
+int equals(struct sockaddr_in* addr1, struct sockaddr_in* addr2);
 
 #endif
 

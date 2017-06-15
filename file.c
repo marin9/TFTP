@@ -17,11 +17,11 @@ File* listFiles(char *path){
 
 	File *stack=NULL;	
 	struct dirent *ent;
-	char fullPath[256];
+	char fullPath[NAMELEN];
 
 	while((ent=readdir(dir))!=NULL){
 		if(ent->d_name[0]=='.') continue;
-		snprintf(fullPath, 256, "%s/%s", path, ent->d_name);
+		snprintf(fullPath, NAMELEN-1, "%s/%s", path, ent->d_name);
 
 		if(isDir(fullPath)) addToStack(&stack, ent->d_name, 1, 0, 0);
 		else addToStack(&stack, ent->d_name, 0,isExecutable(fullPath) , fileSize(fullPath));

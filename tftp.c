@@ -2,10 +2,6 @@
 #include <arpa/inet.h>
 #include <string.h>
 
-//TODO
-//tftp.c
-//ctftp.c
-
 
 int GetRequestData(char *buff, int len, int *opcode, char *filename){
 	//get opcode
@@ -60,7 +56,7 @@ void WriteFile(int sock, char *buff, char *dir, char *name, int wr, struct socka
 }
 
 void SendFile(int sock, char *buff, char *dir, char *name, struct sockaddr_in *addr, socklen_t alen){
-	char path[BUFFLEN-5];
+	char path[DATALEN];
 	strcpy(path, dir);
 	strcat(path, "/");
 	strcat(path, name);
@@ -68,23 +64,48 @@ void SendFile(int sock, char *buff, char *dir, char *name, struct sockaddr_in *a
 	FILE *file=fopen(path, "r");
 	if(file==NULL){
 		if(errno==ENOENT) SendError(sock, buff, 1, "File not found.", addr, alen);
-		else if(errno==EACCESS) SendError(sock, buff, 2, "Access violation.", addr, alen);
+		else if(errno==EACCES) SendError(sock, buff, 2, "Access violation.", addr, alen);
 		else SendError(sock, buff, 0, strerror(errno), addr, alen);
 	}
 	
-	
 	int n;
-	do{
+	int packNum=0;
+	struct sockaddr_in recvAddr;
+	socklen_t len=sizeof(recvAddr);
+	char recvBuff[BUFFLEN];
+	
+	while(!feof(file)){
+		++packNum;
 		*((short*)buff)=htons(3);
-		*((short*)(buff+2))=htons(1);
-		n=fread(buff+4, 1, BUFFLEN-4, file);
+		*((short*)(buff+2))=htons(packNum);
 		
-		if(n==0 && );
-		
-		
-		sendto();
-	}
-	//#define UNKNOWN_PORT			5
+		n=fread(buff+4, 1, DATALEN, file);				
+			
+		int i;
+		int sendAgain=1;
+		for(i=0;i<5;++i){	
+			if(sendAgain) sendto(sock, buff, n+4, 0, (struct sockaddr*)addr, alen);		
+			n=recvfrom(sock, recvBuff, BUFFLEN, 0, (struct sockaddr*)&recvAddr, &len);
+			sendAgain=1;
+			
+			if(n==-1 && (errno==EAGAIN || errno==EWOULDBLOCK)) continue;
+			
+			if(!equals(addr, &recvAddr)){
+				SendError(sock, buff, UNKNOWN_PORT, "Who are you ?", &recvAddr, len);
+				continue;
+			}
+			
+			if(ntohs(*((unsigned short*)recvBuff))!=ACK) continue;
+			
+			if(ntohs(*((unsigned short*)(recvBuff+2)))==packNum) break;
+			
+			if(ntohs(*((unsigned short*)(recvBuff+2)))==(packNum-1)){
+				sendAgain=0;
+			}			
+		}		
+		if(i==5) break;
+	}	
+	fclose(file);
 }
 
 void SendDir(int sock, char *buff, char *dir, char *name, struct sockaddr_in *addr, socklen_t alen){
@@ -113,5 +134,3 @@ void SendAck(int sock, char* buff, int num, struct sockaddr_in *addr, socklen_t 
 	
 	sendto(sock, buff, 4, 0, (struct sockaddr*)addr, len);
 }
-
-
