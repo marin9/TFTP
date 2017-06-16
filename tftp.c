@@ -32,14 +32,20 @@ int GetRequestData(char *buff, int len, int *opcode, char *filename){
 }
 
 void RemoveFile(int sock, char *buff, char *dir, char *name, int wr, struct sockaddr_in *addr, socklen_t alen){
+	strcpy(buff, dir);
+	strcat(buff, "/");
+	strcat(buff, name);
 	
+	if(strstr(buff, "..")!=NULL){
+		SendError(sock, buff, ACCESS_VIOLATION, "", addr, alen);
+		return;
+	}
 	
+	printf("%s\n", buff);
+	int ret=1; //remove(buff);  //TODO test
 	
-	
-	
-	
-	
-	
+	if(ret==-1) SendError(sock, buff, NOT_DEFINED, strerror(errno), addr, alen);
+	else SendAck(sock, buff, 0, addr, alen);
 }
 
 void WriteFile(int sock, char *buff, char *dir, char *name, int wr, struct sockaddr_in *addr, socklen_t alen){
@@ -56,12 +62,11 @@ void WriteFile(int sock, char *buff, char *dir, char *name, int wr, struct socka
 }
 
 void SendFile(int sock, char *buff, char *dir, char *name, struct sockaddr_in *addr, socklen_t alen){
-	char path[DATALEN];
-	strcpy(path, dir);
-	strcat(path, "/");
-	strcat(path, name);
+	strcpy(buff, dir);
+	strcat(buff, "/");
+	strcat(buff, name);
 	
-	FILE *file=fopen(path, "r");
+	FILE *file=fopen(buff, "r");
 	if(file==NULL){
 		if(errno==ENOENT) SendError(sock, buff, 1, "File not found.", addr, alen);
 		else if(errno==EACCES) SendError(sock, buff, 2, "Access violation.", addr, alen);
