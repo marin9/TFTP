@@ -1,12 +1,14 @@
 #include "tftp.h"
+#include "file.h"
 #include <arpa/inet.h>
 #include <string.h>
 
+char *TMPFILE="/tmp/tftp.tmp";
 
 int GetRequestData(char *buff, int len, int *opcode, char *filename){
 	//get opcode
 	*opcode=ntohs(*((short*)buff));
-	if(*opcode!=HELLO && *opcode!=READ && *opcode!=WRITE && *opcode!=DIR && *opcode!=REMOVE){
+	if(*opcode!=HELLO && *opcode!=READ && *opcode!=WRITE && *opcode!=LDIR && *opcode!=REMOVE){
 		return ILLEGAL_TFTP_OPERATION;
 	}
 	
@@ -42,35 +44,90 @@ void RemoveFile(int sock, char *buff, char *dir, char *name, int wr, struct sock
 	}
 	
 	printf("%s\n", buff);
-	int ret=1; //remove(buff);  //TODO test
+	int ret=remove(buff); 
 	
 	if(ret==-1) SendError(sock, buff, NOT_DEFINED, strerror(errno), addr, alen);
 	else SendAck(sock, buff, 0, addr, alen);
 }
 
 void WriteFile(int sock, char *buff, char *dir, char *name, int wr, struct sockaddr_in *addr, socklen_t alen){
-
-
-
-
-
-
-
-
-
-
-}
-
-void SendFile(int sock, char *buff, char *dir, char *name, struct sockaddr_in *addr, socklen_t alen){
 	strcpy(buff, dir);
 	strcat(buff, "/");
 	strcat(buff, name);
 	
 	FILE *file=fopen(buff, "r");
+	if(file!=NULL){
+		SendError(sock, buff, FILE_ALREADY_EXIST, "File already exist.", addr, alen);
+		return;
+	}
+		
+	file=fopen(buff, "w+");
 	if(file==NULL){
-		if(errno==ENOENT) SendError(sock, buff, 1, "File not found.", addr, alen);
-		else if(errno==EACCES) SendError(sock, buff, 2, "Access violation.", addr, alen);
+		if(errno==EACCES) SendError(sock, buff, ACCESS_VIOLATION, "Access violation.", addr, alen);
 		else SendError(sock, buff, 0, strerror(errno), addr, alen);
+		return;
+	}
+	
+	int n;
+	int packNum=0;
+	struct sockaddr_in recvAddr;
+	socklen_t len=sizeof(recvAddr);
+	
+	while(1){
+		int stat=recvfrom(sock, buff, BUFFLEN, 0, (struct sockaddr*)&recvAddr, &len);
+		if(stat<0){
+			//TODO
+		}else if(stat<BUFFLEN){
+			//TODO
+		}
+		//TODO
+		++packNum;
+		*((short*)buff)=htons(3);
+		*((short*)(buff+2))=htons(packNum);
+		
+		n=fread(buff+4, 1, DATALEN, file);				
+			
+		int i;
+		int sendAgain=1;
+		for(i=0;i<5;++i){	
+			if(sendAgain) sendto(sock, buff, n+4, 0, (struct sockaddr*)addr, alen);		
+			n=recvfrom(sock, recvBuff, BUFFLEN, 0, (struct sockaddr*)&recvAddr, &len);
+			sendAgain=1;
+			
+			if(n==-1 && (errno==EAGAIN || errno==EWOULDBLOCK)) continue;
+			
+			if(!equals(addr, &recvAddr)){
+				SendError(sock, buff, UNKNOWN_PORT, "Who are you ?", &recvAddr, len);
+				continue;
+			}
+			
+			if(ntohs(*((unsigned short*)recvBuff))!=ACK) continue;
+			
+			if(ntohs(*((unsigned short*)(recvBuff+2)))==packNum) break;
+			
+			if(ntohs(*((unsigned short*)(recvBuff+2)))==(packNum-1)){
+				sendAgain=0;
+			}			
+		}		
+		if(i==5) break;
+	}	
+}
+
+void SendFile(int sock, char *buff, char *dir, char *name, struct sockaddr_in *addr, socklen_t alen){
+	if(dir==NULL || name==NULL){
+		strcpy(buff, TMPFILE);
+	}else{
+		strcpy(buff, dir);
+		strcat(buff, "/");
+		strcat(buff, name);
+	}		
+	
+	FILE *file=fopen(buff, "r");
+	if(file==NULL){
+		if(errno==ENOENT) SendError(sock, buff, FILE_NOT_FOUND, "File not found.", addr, alen);
+		else if(errno==EACCES) SendError(sock, buff, ACCESS_VIOLATION, "Access violation.", addr, alen);
+		else SendError(sock, buff, 0, strerror(errno), addr, alen);
+		return;
 	}
 	
 	int n;
@@ -114,15 +171,56 @@ void SendFile(int sock, char *buff, char *dir, char *name, struct sockaddr_in *a
 }
 
 void SendDir(int sock, char *buff, char *dir, char *name, struct sockaddr_in *addr, socklen_t alen){
+	strcpy(buff, dir);
+	strcat(buff, "/");
+	strcat(buff, name);
+		
+	if(!dirExist(buff)){
+		SendError(sock, buff, DIRECTORY_NOT_FOUND, "Directory not found.", addr, alen);
+		return;
+	}
 	
+	File *list=listFiles(buff);		
+	File *flist=list;
 	
+	char *data=(char*)malloc(512*sizeof(char));
+	int size=512;
+	int index=0;
+	data[0]=0;
 	
+	while(flist!=NULL){	
+		int nlen=strlen(flist->name);
+		int slen;
+		char file_size[16];
+		if(flist->isDir){
+			strcpy(file_size, "DIR");
+			slen=strlen(file_size);
+		}else{
+			sizeToH(flist->size, file_size, 16);
+			slen=strlen(file_size);
+		}
+		
+		if(size<=(nlen+slen+1)){
+			size=size+512;
+			data=(char*)realloc(data, size*sizeof(char));
+		}
+				
+		strcat(data, flist->name);
+		strcat(data, "\t\t");
+		strcat(data, file_size);
+		strcat(data, "\n");
+		index=strlen(data);	
+		
+		flist=flist->next;
+	}
 	
+	FILE *f=fopen(TMPFILE, "w+");
+	fwrite(data, strlen(data), 1, f);
+	fclose(f);
 	
-	
-	
-	
-	
+	SendFile(sock, buff, NULL, NULL, addr, alen);
+
+	freeFiles(list);	
 }
 
 void SendError(int sock, char *buff, int error, char *msg, struct sockaddr_in* addr, socklen_t len){

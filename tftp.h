@@ -10,7 +10,7 @@
 #define ACK		4
 #define ERROR	5
 #define REMOVE	6
-#define DIR		7
+#define LDIR	7
 
 //Error codes
 #define NOT_DEFINED				0
