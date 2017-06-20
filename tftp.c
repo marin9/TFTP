@@ -73,20 +73,30 @@ void WriteFile(int sock, char *buff, char *dir, char *name, int wr, struct socka
 	struct sockaddr_in recvAddr;
 	socklen_t len=sizeof(recvAddr);
 	
+	SendAck(sock, buff, 0, addr, alen);
+//ENOMEM or EDQUOTA - no space on disc	
 	while(1){
-		int stat=recvfrom(sock, buff, BUFFLEN, 0, (struct sockaddr*)&recvAddr, &len);
+		int i;
+		int stat;
+		//TODO
+		for(i=0;i<5;++i){
+			stat=recvfrom(sock, buff, BUFFLEN, 0, (struct sockaddr*)&recvAddr, &len);
+			
+			
+		}
+			
 		if(stat<0){
 			//TODO
 		}else if(stat<BUFFLEN){
 			//TODO
 		}
-		//TODO
+		
 		++packNum;
 		*((short*)buff)=htons(3);
 		*((short*)(buff+2))=htons(packNum);
 		
 		n=fread(buff+4, 1, DATALEN, file);				
-			
+		/*	
 		int i;
 		int sendAgain=1;
 		for(i=0;i<5;++i){	
@@ -108,7 +118,7 @@ void WriteFile(int sock, char *buff, char *dir, char *name, int wr, struct socka
 			if(ntohs(*((unsigned short*)(recvBuff+2)))==(packNum-1)){
 				sendAgain=0;
 			}			
-		}		
+		}	*/	
 		if(i==5) break;
 	}	
 }
