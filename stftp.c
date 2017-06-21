@@ -33,7 +33,7 @@ int main(int argc, char **argv){
 		
 		int len=RecvFrom(sock, buffer, &caddr, &alen);
 		if(len==-1) continue;
-	
+
 		int s=fork();
 		if(s==-1){
 			printf("\x1B[31mERROR:\x1B[0m Client process create fail. %s\n", strerror(errno));
