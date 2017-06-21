@@ -56,7 +56,7 @@ int main(int argc, char **argv){
 				break;
 			}
 			
-			if(opcode==HELLO) SendAck(csock, buffer, 0, &caddr, alen);
+			if(opcode==HELLO) SendHello(csock, buffer, &caddr, alen);
 			else if(opcode==REMOVE) RemoveFile(csock, buffer, directory, filename, write, &caddr, alen);
 			else if(opcode==WRITE) WriteFile(csock, buffer, directory, filename, write, &caddr, alen);
 			else if(opcode==READ) SendFile(csock, buffer, directory, filename, &caddr, alen);	

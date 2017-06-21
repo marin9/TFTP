@@ -33,6 +33,7 @@ void SendFile(int sock, char *buff, char *dir, char *name, struct sockaddr_in *a
 void SendDir(int sock, char *buff, char *dir, char *name, struct sockaddr_in *addr, socklen_t alen);
 void SendError(int sock, char *buff, int error, char *msg, struct sockaddr_in* addr, socklen_t len);
 void SendAck(int sock, char* buff, int num, struct sockaddr_in *addr, socklen_t len);
+void SendHello(int sock, char *buff, struct sockaddr_in *addr, socklen_t len);
 
 #endif
 

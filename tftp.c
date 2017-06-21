@@ -251,3 +251,14 @@ void SendAck(int sock, char* buff, int num, struct sockaddr_in *addr, socklen_t 
 	
 	sendto(sock, buff, 4, 0, (struct sockaddr*)addr, len);
 }
+
+void SendHello(int sock, char *buff, struct sockaddr_in *addr, socklen_t len){
+	char hostname[128];
+	gethostname(hostname, 128);
+	
+	*((short*)buff)=htons(HELLO);	
+	strcpy(buff+4, hostname);
+	
+	sendto(sock, buff, 4+strlen(buff+4)+1, 0, (struct sockaddr*)addr, len);		
+}
+
