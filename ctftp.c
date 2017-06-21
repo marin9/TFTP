@@ -1,8 +1,7 @@
 #include <stdio.h>
 #include "net.h"
 #include "tftp.h"
-//TODO
-//test
+//TODO test
 
 void GetOpt(int argc, char **argv, unsigned short *port);
 void PrepareAddrBroadcast(int socket, struct sockaddr_in *addr, unsigned short port);
@@ -33,9 +32,13 @@ int main(int argc, char **argv){
 	char command[16];
 	while(1){
 		printf(">");
-		scanf("%s%s", command, buffer);
-		ToLower(command, 16);
+		scanf("%s", buffer);
 		
+		int i=0;
+		while(buffer[i]!=':') ++i;		
+		strncpy(command, buffer, i);
+		ToLower(command, 16);
+		//TODO stack smash
 		if(strcmp(command, "get")==0) GetFile(sock, buffer, &addr, alen);
 		else if(strcmp(command, "put")==0) PutFile(sock, buffer, &addr, alen);
 		else if(strcmp(command, "rmv")==0) RmvFile(sock, buffer, &addr, alen);
@@ -46,9 +49,10 @@ int main(int argc, char **argv){
 			printf("put - write file\n");
 			printf("rmv - remove file\n");
 			printf("list - list directory\n");
+			printf("Example: put:filename.ext\n");
 						
 		}else if(strcmp(command, "quit")==0) break;
-		else printf("Illegal command. Write help-for more info.");
+		else printf("Illegal command. Write help-for more info.\n");
 	}
 	return 0;
 }
@@ -93,7 +97,7 @@ void PrepareAddrBroadcast(int socket, struct sockaddr_in *addr, unsigned short p
 	memset(addr, 0, sizeof(*addr));   
 	addr->sin_family=AF_INET;
 	addr->sin_port=htons(port);
-	inet_pton(AF_INET, "127.0.0.1", &(addr->sin_addr)); //TODO  255.255.255.255
+	inet_pton(AF_INET, "255.255.255.255", &(addr->sin_addr)); 
 
 	int on=1;
 	if(setsockopt(socket, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on))<0){
