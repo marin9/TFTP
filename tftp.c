@@ -20,6 +20,9 @@ int GetRequestData(char *buff, int len, int *opcode, char *filename){
 	if(i>=BUFFLEN) return ILLEGAL_TFTP_OPERATION;
 	filename[j]=0;
 	++i;
+	if(strstr(filename, "..")!=NULL){
+		return ACCESS_VIOLATION;
+	}
 	
 	//get transfer type
 	char transfertype[32];
@@ -34,6 +37,11 @@ int GetRequestData(char *buff, int len, int *opcode, char *filename){
 }
 
 void RemoveFile(int sock, char *buff, char *dir, char *name, int wr, struct sockaddr_in *addr, socklen_t alen){
+	if(!wr){
+		SendError(sock, buff, ACCESS_VIOLATION, "Access violation.", addr, alen);
+		return;
+	}
+	
 	strcpy(buff, dir);
 	strcat(buff, "/");
 	strcat(buff, name);
@@ -51,6 +59,11 @@ void RemoveFile(int sock, char *buff, char *dir, char *name, int wr, struct sock
 }
 
 void WriteFile(int sock, char *buff, char *dir, char *name, int wr, struct sockaddr_in *addr, socklen_t alen){
+	if(!wr){
+		SendError(sock, buff, ACCESS_VIOLATION, "Access violation.", addr, alen);
+		return;
+	}
+	
 	strcpy(buff, dir);
 	strcat(buff, "/");
 	strcat(buff, name);
@@ -69,58 +82,51 @@ void WriteFile(int sock, char *buff, char *dir, char *name, int wr, struct socka
 	}
 	
 	int n;
+	int ok=0;
 	int packNum=0;
 	struct sockaddr_in recvAddr;
 	socklen_t len=sizeof(recvAddr);
 	
 	SendAck(sock, buff, 0, addr, alen);
-//ENOMEM or EDQUOTA - no space on disc	
-	while(1){
+	++packNum;
+	
+	int next=1;
+	while(next){
 		int i;
-		int stat;
-		//TODO
 		for(i=0;i<5;++i){
-			stat=recvfrom(sock, buff, BUFFLEN, 0, (struct sockaddr*)&recvAddr, &len);
-			
-			
-		}
-			
-		if(stat<0){
-			//TODO
-		}else if(stat<BUFFLEN){
-			//TODO
-		}
-		
-		++packNum;
-		*((short*)buff)=htons(3);
-		*((short*)(buff+2))=htons(packNum);
-		
-		n=fread(buff+4, 1, DATALEN, file);				
-		/*	
-		int i;
-		int sendAgain=1;
-		for(i=0;i<5;++i){	
-			if(sendAgain) sendto(sock, buff, n+4, 0, (struct sockaddr*)addr, alen);		
-			n=recvfrom(sock, recvBuff, BUFFLEN, 0, (struct sockaddr*)&recvAddr, &len);
-			sendAgain=1;
-			
+			n=recvfrom(sock, buff, BUFFLEN, 0, (struct sockaddr*)&recvAddr, &len);			
 			if(n==-1 && (errno==EAGAIN || errno==EWOULDBLOCK)) continue;
-			
 			if(!equals(addr, &recvAddr)){
 				SendError(sock, buff, UNKNOWN_PORT, "Who are you ?", &recvAddr, len);
 				continue;
 			}
 			
-			if(ntohs(*((unsigned short*)recvBuff))!=ACK) continue;
+			if(ntohs(*((unsigned short*)buff))!=DATA) continue;		
+			if(ntohs(*((unsigned short*)(buff+2)))==packNum) break;
+		}
 			
-			if(ntohs(*((unsigned short*)(recvBuff+2)))==packNum) break;
+		if(i==5) break;	
+							
+		int stat=fwrite(buff+4, 1, n-4, file);	
+		if(stat!=(n-4)){
+			//ENOMEM or EDQUOTA
+			SendError(sock, buff, NOT_DEFINED, "Error on write in file.", &recvAddr, len);
+			break;
+		}			
 			
-			if(ntohs(*((unsigned short*)(recvBuff+2)))==(packNum-1)){
-				sendAgain=0;
-			}			
-		}	*/	
-		if(i==5) break;
+		*((short*)buff)=htons(ACK);
+		*((short*)(buff+2))=htons(packNum);	
+		SendAck(sock, buff, packNum, addr, alen);
+			
+		if(n<BUFFLEN){
+			ok=1;
+			break;
+		}
+		++packNum;
 	}	
+	fclose(file);
+	
+	if(!ok) RemoveFile(sock, buff, dir, name, 1, addr, alen);
 }
 
 void SendFile(int sock, char *buff, char *dir, char *name, struct sockaddr_in *addr, socklen_t alen){
@@ -148,7 +154,7 @@ void SendFile(int sock, char *buff, char *dir, char *name, struct sockaddr_in *a
 	
 	while(!feof(file)){
 		++packNum;
-		*((short*)buff)=htons(3);
+		*((short*)buff)=htons(DATA);
 		*((short*)(buff+2))=htons(packNum);
 		
 		n=fread(buff+4, 1, DATALEN, file);				
@@ -195,7 +201,6 @@ void SendDir(int sock, char *buff, char *dir, char *name, struct sockaddr_in *ad
 	
 	char *data=(char*)malloc(512*sizeof(char));
 	int size=512;
-	int index=0;
 	data[0]=0;
 	
 	while(flist!=NULL){	
@@ -219,7 +224,6 @@ void SendDir(int sock, char *buff, char *dir, char *name, struct sockaddr_in *ad
 		strcat(data, "\t\t");
 		strcat(data, file_size);
 		strcat(data, "\n");
-		index=strlen(data);	
 		
 		flist=flist->next;
 	}

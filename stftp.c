@@ -48,9 +48,10 @@ int main(int argc, char **argv){
 			int error;
 			int opcode;
 			char filename[BUFFLEN-4];
-		
+	
 			if(!(error=GetRequestData(buffer, len, &opcode, filename))){
-				SendError(csock, buffer, error, "Illegal tftp operation, only octet.", &caddr, alen);
+				if(error==ILLEGAL_TFTP_OPERATION) SendError(csock, buffer, error, "Illegal tftp operation, only octet.", &caddr, alen);
+				else if(error==ACCESS_VIOLATION) SendError(csock, buffer, error, "Access violation.", &caddr, alen);
 				close(csock);		
 				break;
 			}
@@ -59,7 +60,7 @@ int main(int argc, char **argv){
 			else if(opcode==REMOVE) RemoveFile(csock, buffer, directory, filename, write, &caddr, alen);
 			else if(opcode==WRITE) WriteFile(csock, buffer, directory, filename, write, &caddr, alen);
 			else if(opcode==READ) SendFile(csock, buffer, directory, filename, &caddr, alen);	
-			else if(opcode==DIR) SendDir(csock, buffer, directory, filename, &caddr, alen);
+			else if(opcode==LDIR) SendDir(csock, buffer, directory, filename, &caddr, alen);
 			
 			close(csock);
 			break;
