@@ -1,16 +1,18 @@
 #include <stdio.h>
-
 #include "net.h"
 #include "tftp.h"
 //TODO
 //test
 
-//ctftp.c
-
 void GetOpt(int argc, char **argv, unsigned short *port);
 void PrepareAddrBroadcast(int socket, struct sockaddr_in *addr, unsigned short port);
 void GetServerAddr(int sock, char *buff, struct sockaddr_in *addr, char *hostname);
 void Send(int sock, char* buff, struct sockaddr_in *addr);
+void ToLower(char *str, int len);
+void GetFile(int sock, char *buff, struct sockaddr_in *addr, socklen_t len);
+void PutFile(int sock, char *buff, struct sockaddr_in *addr, socklen_t len);
+void RmvFile(int sock, char *buff, struct sockaddr_in *addr, socklen_t len);
+void ListFile(int sock, char *buff, struct sockaddr_in *addr, socklen_t len);
 
 
 int main(int argc, char **argv){
@@ -28,11 +30,44 @@ int main(int argc, char **argv){
 	PrepareAddrBroadcast(sock, &addr, port);		
 	GetServerAddr(sock, buffer, &addr, hostname); 
 	
-	
-	printf("Finish:%s\n", hostname);
-	
-	
+	char command[16];
+	while(1){
+		printf(">");
+		scanf("%s%s", command, buffer);
+		ToLower(command, 16);
+		
+		if(strcmp(command, "get")==0) GetFile(sock, buffer, &addr, alen);
+		else if(strcmp(command, "put")==0) PutFile(sock, buffer, &addr, alen);
+		else if(strcmp(command, "rmv")==0) RmvFile(sock, buffer, &addr, alen);
+		else if(strcmp(command, "list")==0) ListFile(sock, buffer, &addr, alen);
+		else if(strcmp(command, "help")==0){
+			printf("Commands:\n");
+			printf("get - get file\n");
+			printf("put - write file\n");
+			printf("rmv - remove file\n");
+			printf("list - list directory\n");
+						
+		}else if(strcmp(command, "quit")==0) break;
+		else printf("Illegal command. Write help-for more info.");
+	}
 	return 0;
+}
+
+
+void GetFile(int sock, char *buff, struct sockaddr_in *addr, socklen_t len){
+	//TODO
+}
+
+void PutFile(int sock, char *buff, struct sockaddr_in *addr, socklen_t len){
+	//TODO
+}
+
+void RmvFile(int sock, char *buff, struct sockaddr_in *addr, socklen_t len){
+	//TODO
+}
+
+void ListFile(int sock, char *buff, struct sockaddr_in *addr, socklen_t len){
+	//TODO
 }
 
 
@@ -72,7 +107,7 @@ void GetServerAddr(int sock, char *buff, struct sockaddr_in *addr, char *hostnam
 
 	*((unsigned short*)buff)=HELLO;
 	
-	while(1){//TODO get host name
+	while(1){
 		Send(sock, buff, addr); 
 		int s=recvfrom(sock, buff, BUFFLEN, 0, (struct sockaddr*)addr, &addrlen);
 
@@ -90,7 +125,7 @@ void GetServerAddr(int sock, char *buff, struct sockaddr_in *addr, char *hostnam
 			}
 		}		
 	}
-	printf("\x1B[32mServer control ready.\x1B[0m \nHost name: %s\n", buff);
+	printf("\x1B[32mServer control ready.\x1B[0m \nHost name: %s\n", buff+4);
 }
 
 void Send(int sock, char* buff, struct sockaddr_in *addr){
@@ -98,6 +133,13 @@ void Send(int sock, char* buff, struct sockaddr_in *addr){
 	if(sendto(sock, buff, msglen+1, 0, (struct sockaddr*)addr, sizeof(*addr))!=(msglen+1)){
 		printf("\x1B[31mERROR:\x1B[0m Send fail: %s\n", strerror(errno));
 		exit(3);
+	}
+}
+
+void ToLower(char *str, int len){
+	int i;
+	for(i=0;i<len;++i){
+		if(str[i]>='A' && str[i]<='Z') str[i]+=32;
 	}
 }
 
