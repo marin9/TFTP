@@ -126,7 +126,7 @@ void GetOpt(int argc, char **argv, char *dir, int *write, unsigned short *port){
 	}
 	
 	if(argc!=(2*sum+1+*write)){
-		printf("Usage: [-d working_directory] [-p tftp_port]\n");
+		printf("Usage: [-d working_directory] [-p tftp_port] [-w]\n");
 		exit(1);
 	}
 	
