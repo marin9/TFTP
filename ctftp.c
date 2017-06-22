@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "net.h"
 #include "tftp.h"
-//TODO test
+
 
 void GetOpt(int argc, char **argv, unsigned short *port);
 void PrepareAddrBroadcast(int socket, struct sockaddr_in *addr, unsigned short port);
@@ -70,7 +70,7 @@ void GetFile(int sock, char *name, struct sockaddr_in *addr, socklen_t len){
 		return;
 	}
 	
-	FILE *f=fopen(name, "w+");
+	FILE *f=fopen(name, "w+b");
 	if(f==NULL){
 		printf("\x1B[31mERROR:\x1B[0m File create error: %s.", strerror(errno));
 		return;
@@ -131,7 +131,73 @@ void GetFile(int sock, char *name, struct sockaddr_in *addr, socklen_t len){
 }
 
 void PutFile(int sock, char *name, struct sockaddr_in *addr, socklen_t len){
-	//TODO
+	char buffer[BUFFLEN];
+	struct sockaddr_in saddr;
+	socklen_t slen=sizeof(saddr);
+	
+	*((unsigned short*)buffer)=htons(WRITE);
+	strcpy(buffer+2, name);
+	strcpy(buffer+2+strlen(name)+1, "octet");
+	
+	FILE *file=fopen(name, "rb");
+	if(file==NULL){
+		printf("Error: File not exist.\n");
+		return;
+	}
+		
+	int n=sendto(sock, buffer, BUFFLEN, 0, (struct sockaddr*)addr, len);
+	if(n<0){
+		printf("\x1B[31mERROR:\x1B[0m Send request fail: %s.\n", strerror(errno));
+		return;
+	}
+	n=recvfrom(sock, buffer, BUFFLEN, 0, (struct sockaddr*)&saddr, &slen);
+	if(n<0){
+		printf("Error: Recv ack from server: %s\n", strerror(errno));
+		return;
+	}else{
+		if(ntohs(*((unsigned short*)buffer))==ERROR){
+			printf("Warning: %s\n", buffer+4);
+			return;
+			
+		}else if(ntohs(*((unsigned short*)buffer))!=ACK || ntohs(*((unsigned short*)(buffer+2)))!=0){
+			printf("Error: no answer.\n");
+			return;
+		}	
+	}
+	
+		
+	int packNum=1;		
+	while(1){
+		*((short*)buffer)=htons(DATA);
+		*((short*)(buffer+2))=htons(packNum);
+		
+		n=fread(buffer+4, 1, DATALEN, file);				
+			
+		int i;
+		int sendAgain=1;
+		for(i=0;i<5;++i){	
+			if(sendAgain) sendto(sock, buffer, n+4, 0, (struct sockaddr*)&saddr, slen);		
+			n=recvfrom(sock, buffer, BUFFLEN, 0, (struct sockaddr*)&saddr, &slen);
+			sendAgain=1;
+			
+			if(n==-1 && (errno==EAGAIN || errno==EWOULDBLOCK)) continue;
+			
+			if(ntohs(*((unsigned short*)buffer))!=ACK) continue;
+			
+			if(ntohs(*((unsigned short*)(buffer+2)))==packNum) break;
+			
+			if(ntohs(*((unsigned short*)(buffer+2)))==(packNum-1)){
+				sendAgain=0;
+			}			
+		}		
+		if(i==5) break;
+		if(feof(file)){
+			printf("Finish.\n");
+			break;
+		}
+		++packNum;
+	}	
+	fclose(file);
 }
 
 void RmvFile(int sock, char *name, struct sockaddr_in *addr, socklen_t len){
@@ -167,7 +233,10 @@ void RmvFile(int sock, char *name, struct sockaddr_in *addr, socklen_t len){
 
 		if(ntohs(*((unsigned short*)buffer))!=ACK) continue;
 		if(ntohs(*((unsigned short*)(buffer+2)))!=0) continue;	
-		else break;
+		else{
+			printf("Finish.\n");
+			break;
+		}
 	}	
 }
 

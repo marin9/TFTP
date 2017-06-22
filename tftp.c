@@ -51,7 +51,6 @@ void RemoveFile(int sock, char *buff, char *dir, char *name, int wr, struct sock
 		return;
 	}
 	
-	printf("%s\n", buff);
 	int ret=remove(buff); 
 	
 	if(ret==-1) SendError(sock, buff, NOT_DEFINED, strerror(errno), addr, alen);
