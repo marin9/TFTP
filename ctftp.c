@@ -6,7 +6,6 @@
 void GetOpt(int argc, char **argv, unsigned short *port);
 void PrepareAddrBroadcast(int socket, struct sockaddr_in *addr, unsigned short port);
 void GetServerAddr(int sock, char *buff, struct sockaddr_in *addr, char *hostname);
-void Send(int sock, char* buff, struct sockaddr_in *addr);
 void ToLower(char *str, int len);
 void GetFile(int sock, char *name, struct sockaddr_in *addr, socklen_t len);
 void PutFile(int sock, char *name, struct sockaddr_in *addr, socklen_t len);
@@ -331,17 +330,21 @@ void PrepareAddrBroadcast(int socket, struct sockaddr_in *addr, unsigned short p
 void GetServerAddr(int sock, char *buff, struct sockaddr_in *addr, char *hostname){
 	socklen_t addrlen=sizeof(*addr);
 
-	*((unsigned short*)buff)=HELLO;
-	
 	while(1){
-		Send(sock, buff, addr); 
-		int s=recvfrom(sock, buff, BUFFLEN, 0, (struct sockaddr*)addr, &addrlen);
+		*((unsigned short*)buff)=HELLO;
+		int s=sendto(sock, buff, 2, 0, (struct sockaddr*)addr, addrlen);
+		if(s<0){
+			printf("\x1B[31mERROR:\x1B[0m Send hello packet fail: %s\n", strerror(errno));
+			return;
+		}
+		
+		s=recvfrom(sock, buff, BUFFLEN, 0, (struct sockaddr*)addr, &addrlen);
 
 		if(s==-1){
 			if(errno==EAGAIN || errno==EWOULDBLOCK) printf("\x1B[33mTime out...\x1B[0m \n");
 			else{
 				printf("\x1B[31mERROR:\x1B[0m Receive fail: %s\n", strerror(errno));
-				break;
+				return;
 			}
 		}else{
 			int code=ntohs(*((unsigned short*)buff));
@@ -352,14 +355,6 @@ void GetServerAddr(int sock, char *buff, struct sockaddr_in *addr, char *hostnam
 		}		
 	}
 	printf("\x1B[32mServer control ready.\x1B[0m \nHost name: %s\n", buff+4);
-}
-
-void Send(int sock, char* buff, struct sockaddr_in *addr){
-	int msglen=strlen(buff);
-	if(sendto(sock, buff, msglen+1, 0, (struct sockaddr*)addr, sizeof(*addr))!=(msglen+1)){
-		printf("\x1B[31mERROR:\x1B[0m Send fail: %s\n", strerror(errno));
-		exit(3);
-	}
 }
 
 void ToLower(char *str, int len){
