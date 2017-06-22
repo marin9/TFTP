@@ -318,7 +318,7 @@ void PrepareAddrBroadcast(int socket, struct sockaddr_in *addr, unsigned short p
 	memset(addr, 0, sizeof(*addr));   
 	addr->sin_family=AF_INET;
 	addr->sin_port=htons(port);
-	inet_pton(AF_INET, "127.0.0.1", &(addr->sin_addr)); //TODO 255.255.255.255
+	inet_pton(AF_INET, "255.255.255.255", &(addr->sin_addr));  
 
 	int on=1;
 	if(setsockopt(socket, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on))<0){

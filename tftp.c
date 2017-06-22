@@ -73,7 +73,7 @@ void WriteFile(int sock, char *buff, char *dir, char *name, int wr, struct socka
 		return;
 	}
 		
-	file=fopen(buff, "w+");
+	file=fopen(buff, "w+b");
 	if(file==NULL){
 		if(errno==EACCES) SendError(sock, buff, ACCESS_VIOLATION, "Access violation.", addr, alen);
 		else SendError(sock, buff, 0, strerror(errno), addr, alen);
@@ -137,7 +137,7 @@ void SendFile(int sock, char *buff, char *dir, char *name, struct sockaddr_in *a
 		strcat(buff, name);
 	}		
 	
-	FILE *file=fopen(buff, "r");
+	FILE *file=fopen(buff, "rb");
 	if(file==NULL){
 		if(errno==ENOENT) SendError(sock, buff, FILE_NOT_FOUND, "File not found.", addr, alen);
 		else if(errno==EACCES) SendError(sock, buff, ACCESS_VIOLATION, "Access violation.", addr, alen);
