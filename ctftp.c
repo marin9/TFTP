@@ -135,11 +135,96 @@ void PutFile(int sock, char *name, struct sockaddr_in *addr, socklen_t len){
 }
 
 void RmvFile(int sock, char *name, struct sockaddr_in *addr, socklen_t len){
-	//TODO
+	char buffer[BUFFLEN];
+	
+	*((unsigned short*)buffer)=htons(REMOVE);
+	strcpy(buffer+2, name);
+	
+	int n=sendto(sock, buffer, BUFFLEN, 0, (struct sockaddr*)addr, len);
+	if(n<0){
+		printf("\x1B[31mERROR:\x1B[0m Send request fail: %s.\n", strerror(errno));
+		return;
+	}
+	
+	int x=0;
+	struct sockaddr_in saddr;
+	socklen_t slen=sizeof(saddr);
+	while(1){
+		n=recvfrom(sock, buffer, BUFFLEN, 0, (struct sockaddr*)&saddr, &slen);
+		if(n<1){
+			printf(".\n");
+			++x;
+			if(x==9){
+				printf("Error: no response from server.\n");
+				break;
+			}else continue;
+		}
+	
+		if(ntohs(*((unsigned short*)buffer))==ERROR){
+			printf("Warning: %s\n", buffer+4);
+			break;
+		}
+
+		if(ntohs(*((unsigned short*)buffer))!=ACK) continue;
+		if(ntohs(*((unsigned short*)(buffer+2)))!=0) continue;	
+		else break;
+	}	
 }
 
 void ListFile(int sock, char *name, struct sockaddr_in *addr, socklen_t len){
-	//TODO
+	char buffer[BUFFLEN];
+	
+	*((unsigned short*)buffer)=htons(LDIR);
+	strcpy(buffer+2, name);
+	
+	int n=sendto(sock, buffer, BUFFLEN, 0, (struct sockaddr*)addr, len);
+	if(n<0){
+		printf("\x1B[31mERROR:\x1B[0m Send request fail: %s.\n", strerror(errno));
+		return;
+	}
+	
+	int x=0;
+	int packNum=1;
+	struct sockaddr_in saddr;
+	socklen_t slen=sizeof(saddr);
+	while(1){
+		n=recvfrom(sock, buffer, BUFFLEN, 0, (struct sockaddr*)&saddr, &slen);
+		if(n<1){
+			printf(".\n");
+			++x;
+			if(x==9){
+				printf("Error: no response from server.\n");
+				break;
+			}else continue;
+		}
+	
+		if(ntohs(*((unsigned short*)buffer))==ERROR){
+			printf("Warning: %s\n", buffer+4);
+			break;
+		}
+
+		if(ntohs(*((unsigned short*)buffer))!=DATA) continue;
+		if(ntohs(*((unsigned short*)(buffer+2)))!=packNum) continue;
+		
+		printf("%s", buffer+4);
+			
+		*((unsigned short*)buffer)=htons(ACK);
+		*((unsigned short*)(buffer+2))=htons(packNum);
+		
+		int stat=sendto(sock, buffer, 4, 0, (struct sockaddr*)&saddr, slen);
+		if(stat<0){
+			printf("\x1B[31mERROR:\x1B[0m Send ack fail: %s.", strerror(errno));
+			break;
+		}	
+		
+		if((n-4)<DATALEN){
+			printf("Finish.\n");
+			break;
+		}
+		
+		++packNum;	
+		x=0;	
+	}	
 }
 
 
