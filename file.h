@@ -1,5 +1,4 @@
-#ifndef FILE_H
-#define FILE_H
+#pragma once
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,6 +26,3 @@ int dirExist(char *dir);
 long fileSize(char *path);
 void freeFiles(File *files);
 void sizeToH(unsigned long size, char *buff, size_t max_len);
-
-#endif
-

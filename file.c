@@ -1,5 +1,6 @@
 #include "file.h"
 
+
 void addToStack(File **root, char *name, char isDir, char isExec, unsigned long size){
 	File *f=(File*)malloc(sizeof(File));
 	strncpy(f->name, name, NAMELEN);
@@ -92,6 +93,3 @@ void sizeToH(unsigned long size, char *buff, size_t max_len){
 
 	snprintf(buff, max_len, "%4.1f %s", s, mj);
 }
-
-
-

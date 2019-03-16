@@ -43,14 +43,14 @@ int main(int argc, char **argv){
 		else if(strncmp(buffer, "list", i)==0) ListFile(sock, buffer+i+1, &addr, alen);
 		else if(strncmp(buffer, "quit", i)==0) break;
 		else if(strncmp(buffer, "help", i)==0){
-			printf("Commands:\n");
-			printf("get - get file\n");
-			printf("put - write file\n");
-			printf("rmv - remove file\n");
-			printf("list - list directory\n");
-			printf("Example: put:filename.ext\n");
+			printf(" Commands:\n");
+			printf("  get - get file\n");
+			printf("  put - write file\n");
+			printf("  rmv - remove file\n");
+			printf("  list - list directory\n");
+			printf(" Example: put:filename.ext\n");
 						
-		}else printf("Illegal command. Write help-for more info.\n");
+		}else printf(" Illegal command. Write help-for more info.\n");
 	}
 	return 0;
 }
@@ -65,13 +65,13 @@ void GetFile(int sock, char *name, struct sockaddr_in *addr, socklen_t len){
 	
 	int n=sendto(sock, buffer, BUFFLEN, 0, (struct sockaddr*)addr, len);
 	if(n<0){
-		printf("\x1B[31mERROR:\x1B[0m Send request fail: %s.\n", strerror(errno));
+		printf("\x1B[31m ERROR:\x1B[0m Send request fail: %s.\n", strerror(errno));
 		return;
 	}
 	
 	FILE *f=fopen(name, "w+b");
 	if(f==NULL){
-		printf("\x1B[31mERROR:\x1B[0m File create error: %s.", strerror(errno));
+		printf("\x1B[31m ERROR:\x1B[0m File create error: %s.", strerror(errno));
 		return;
 	}
 	
@@ -86,14 +86,14 @@ void GetFile(int sock, char *name, struct sockaddr_in *addr, socklen_t len){
 			printf(".\n");
 			++x;
 			if(x==9){
-				printf("Error: no response from server.\n");
+				printf(" Error: no response from server.\n");
 				err=1;
 				break;
 			}else continue;
 		}
 	
 		if(ntohs(*((unsigned short*)buffer))==ERROR){
-			printf("Warning: %s\n", buffer+4);
+			printf(" Warning: %s\n", buffer+4);
 			err=1;
 			break;
 		}
@@ -103,7 +103,7 @@ void GetFile(int sock, char *name, struct sockaddr_in *addr, socklen_t len){
 		
 		int stat=fwrite(buffer+4, 1, n-4, f);
 		if(stat!=(n-4)){
-			printf("\x1B[31mERROR:\x1B[0m File write error: %s.", strerror(errno));
+			printf("\x1B[31m ERROR:\x1B[0m File write error: %s.", strerror(errno));
 			err=1;
 			break;
 		}
@@ -113,12 +113,12 @@ void GetFile(int sock, char *name, struct sockaddr_in *addr, socklen_t len){
 		
 		stat=sendto(sock, buffer, 4, 0, (struct sockaddr*)&saddr, slen);
 		if(stat<0){
-			printf("\x1B[31mERROR:\x1B[0m Send ack fail: %s.", strerror(errno));
+			printf("\x1B[31m ERROR:\x1B[0m Send ack fail: %s.", strerror(errno));
 			break;
 		}	
 		
 		if((n-4)<DATALEN){
-			printf("Finish.\n");
+			printf(" Finish.\n");
 			break;
 		}
 		
@@ -140,26 +140,25 @@ void PutFile(int sock, char *name, struct sockaddr_in *addr, socklen_t len){
 	
 	FILE *file=fopen(name, "rb");
 	if(file==NULL){
-		printf("Error: File not exist.\n");
+		printf(" Error: File not exist.\n");
 		return;
 	}
 		
 	int n=sendto(sock, buffer, BUFFLEN, 0, (struct sockaddr*)addr, len);
 	if(n<0){
-		printf("\x1B[31mERROR:\x1B[0m Send request fail: %s.\n", strerror(errno));
+		printf("\x1B[31m ERROR:\x1B[0m Send request fail: %s.\n", strerror(errno));
 		return;
 	}
 	n=recvfrom(sock, buffer, BUFFLEN, 0, (struct sockaddr*)&saddr, &slen);
 	if(n<0){
-		printf("Error: Recv ack from server: %s\n", strerror(errno));
+		printf(" Error: Recv ack from server: %s\n", strerror(errno));
 		return;
 	}else{
 		if(ntohs(*((unsigned short*)buffer))==ERROR){
-			printf("Warning: %s\n", buffer+4);
-			return;
-			
+			printf(" Warning: %s\n", buffer+4);
+			return;	
 		}else if(ntohs(*((unsigned short*)buffer))!=ACK || ntohs(*((unsigned short*)(buffer+2)))!=0){
-			printf("Error: no answer.\n");
+			printf(" Error: no answer.\n");
 			return;
 		}	
 	}
@@ -169,7 +168,6 @@ void PutFile(int sock, char *name, struct sockaddr_in *addr, socklen_t len){
 	while(1){
 		*((short*)buffer)=htons(DATA);
 		*((short*)(buffer+2))=htons(packNum);
-		
 		n=fread(buffer+4, 1, DATALEN, file);				
 			
 		int i;
@@ -179,19 +177,14 @@ void PutFile(int sock, char *name, struct sockaddr_in *addr, socklen_t len){
 			n=recvfrom(sock, buffer, BUFFLEN, 0, (struct sockaddr*)&saddr, &slen);
 			sendAgain=1;
 			
-			if(n==-1 && (errno==EAGAIN || errno==EWOULDBLOCK)) continue;
-			
+			if(n==-1 && (errno==EAGAIN || errno==EWOULDBLOCK)) continue;		
 			if(ntohs(*((unsigned short*)buffer))!=ACK) continue;
-			
 			if(ntohs(*((unsigned short*)(buffer+2)))==packNum) break;
-			
-			if(ntohs(*((unsigned short*)(buffer+2)))==(packNum-1)){
-				sendAgain=0;
-			}			
+			if(ntohs(*((unsigned short*)(buffer+2)))==(packNum-1)) sendAgain=0;		
 		}		
 		if(i==5) break;
 		if(feof(file)){
-			printf("Finish.\n");
+			printf(" Finish.\n");
 			break;
 		}
 		++packNum;
@@ -207,7 +200,7 @@ void RmvFile(int sock, char *name, struct sockaddr_in *addr, socklen_t len){
 	
 	int n=sendto(sock, buffer, BUFFLEN, 0, (struct sockaddr*)addr, len);
 	if(n<0){
-		printf("\x1B[31mERROR:\x1B[0m Send request fail: %s.\n", strerror(errno));
+		printf("\x1B[31m ERROR:\x1B[0m Send request fail: %s.\n", strerror(errno));
 		return;
 	}
 	
@@ -220,20 +213,20 @@ void RmvFile(int sock, char *name, struct sockaddr_in *addr, socklen_t len){
 			printf(".\n");
 			++x;
 			if(x==9){
-				printf("Error: no response from server.\n");
+				printf(" Error: no response from server.\n");
 				break;
 			}else continue;
 		}
 	
 		if(ntohs(*((unsigned short*)buffer))==ERROR){
-			printf("Warning: %s\n", buffer+4);
+			printf(" Warning: %s\n", buffer+4);
 			break;
 		}
 
 		if(ntohs(*((unsigned short*)buffer))!=ACK) continue;
 		if(ntohs(*((unsigned short*)(buffer+2)))!=0) continue;	
 		else{
-			printf("Finish.\n");
+			printf(" Finish.\n");
 			break;
 		}
 	}	
@@ -247,7 +240,7 @@ void ListFile(int sock, char *name, struct sockaddr_in *addr, socklen_t len){
 	
 	int n=sendto(sock, buffer, BUFFLEN, 0, (struct sockaddr*)addr, len);
 	if(n<0){
-		printf("\x1B[31mERROR:\x1B[0m Send request fail: %s.\n", strerror(errno));
+		printf("\x1B[31m ERROR:\x1B[0m Send request fail: %s.\n", strerror(errno));
 		return;
 	}
 	
@@ -261,13 +254,13 @@ void ListFile(int sock, char *name, struct sockaddr_in *addr, socklen_t len){
 			printf(".\n");
 			++x;
 			if(x==9){
-				printf("Error: no response from server.\n");
+				printf(" Error: no response from server.\n");
 				break;
 			}else continue;
 		}
 	
 		if(ntohs(*((unsigned short*)buffer))==ERROR){
-			printf("Warning: %s\n", buffer+4);
+			printf(" Warning: %s\n", buffer+4);
 			break;
 		}
 
@@ -281,12 +274,12 @@ void ListFile(int sock, char *name, struct sockaddr_in *addr, socklen_t len){
 		
 		int stat=sendto(sock, buffer, 4, 0, (struct sockaddr*)&saddr, slen);
 		if(stat<0){
-			printf("\x1B[31mERROR:\x1B[0m Send ack fail: %s.", strerror(errno));
+			printf("\x1B[31m ERROR:\x1B[0m Send ack fail: %s.", strerror(errno));
 			break;
 		}	
 		
 		if((n-4)<DATALEN){
-			printf("Finish.\n");
+			printf(" Finish.\n");
 			break;
 		}
 		
@@ -298,7 +291,7 @@ void ListFile(int sock, char *name, struct sockaddr_in *addr, socklen_t len){
 
 void GetOpt(int argc, char **argv, unsigned short *port){
 	if(argc!=1 && argc!=3){
-		printf("Usage: [-p tftp_port]\n");
+		printf(" Usage: [-p tftp_port]\n");
 		exit(1);
 	}
 	
@@ -308,7 +301,7 @@ void GetOpt(int argc, char **argv, unsigned short *port){
 		if(strcmp(argv[1], "-p")==0){
 			*port=(unsigned short)atoi(argv[2]);
 		}else{
-			printf("Usage: [-p tftp_port]\n");
+			printf(" Usage: [-p tftp_port]\n");
 			exit(1);
 		}
 	}
@@ -322,7 +315,7 @@ void PrepareAddrBroadcast(int socket, struct sockaddr_in *addr, unsigned short p
 
 	int on=1;
 	if(setsockopt(socket, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on))<0){
-		printf("\x1B[31mERROR:\x1B[0m Set socket broadcast option fail: %s.\n", strerror(errno));
+		printf("\x1B[31m ERROR:\x1B[0m Set socket broadcast option fail: %s.\n", strerror(errno));
 		exit(2);
 	}
 }
@@ -334,7 +327,7 @@ void GetServerAddr(int sock, char *buff, struct sockaddr_in *addr, char *hostnam
 		*((unsigned short*)buff)=HELLO;
 		int s=sendto(sock, buff, 2, 0, (struct sockaddr*)addr, addrlen);
 		if(s<0){
-			printf("\x1B[31mERROR:\x1B[0m Send hello packet fail: %s\n", strerror(errno));
+			printf("\x1B[31m ERROR:\x1B[0m Send hello packet fail: %s\n", strerror(errno));
 			return;
 		}
 		
@@ -343,7 +336,7 @@ void GetServerAddr(int sock, char *buff, struct sockaddr_in *addr, char *hostnam
 		if(s==-1){
 			if(errno==EAGAIN || errno==EWOULDBLOCK) printf("\x1B[33mTime out...\x1B[0m \n");
 			else{
-				printf("\x1B[31mERROR:\x1B[0m Receive fail: %s\n", strerror(errno));
+				printf("\x1B[31m ERROR:\x1B[0m Receive fail: %s\n", strerror(errno));
 				return;
 			}
 		}else{
@@ -354,7 +347,7 @@ void GetServerAddr(int sock, char *buff, struct sockaddr_in *addr, char *hostnam
 			}
 		}		
 	}
-	printf("\x1B[32mServer control ready.\x1B[0m \nHost name: %s\n", buff+4);
+	printf("\x1B[32m Server control ready.\x1B[0m \nHost name: %s\n", buff+4);
 }
 
 void ToLower(char *str, int len){
@@ -363,4 +356,3 @@ void ToLower(char *str, int len){
 		if(str[i]>='A' && str[i]<='Z') str[i]+=32;
 	}
 }
-

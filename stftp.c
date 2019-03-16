@@ -36,7 +36,7 @@ int main(int argc, char **argv){
 
 		int s=fork();
 		if(s==-1){
-			printf("\x1B[31mERROR:\x1B[0m Client process create fail. %s\n", strerror(errno));
+			printf("\x1B[31m ERROR:\x1B[0m Client process create fail. %s\n", strerror(errno));
 			exit(1);
 			
 		}else if(s>0){

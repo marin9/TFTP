@@ -5,6 +5,7 @@
 
 char *TMPFILE="/tmp/tftp.tmp";
 
+
 int GetRequestData(char *buff, int len, int *opcode, char *filename){
 	//get opcode
 	*opcode=ntohs(*((short*)buff));
@@ -260,4 +261,3 @@ void SendHello(int sock, char *buff, struct sockaddr_in *addr, socklen_t len){
 	
 	sendto(sock, buff, 4+strlen(buff+4)+1, 0, (struct sockaddr*)addr, len);		
 }
-
